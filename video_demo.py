@@ -114,7 +114,8 @@ if __name__ == '__main__':
     
     videofile = args.video
     
-    cap = cv2.VideoCapture(videofile)
+    # set 0 for debug
+    cap = cv2.VideoCapture(0)
     
     assert cap.isOpened(), 'Cannot capture source'
     
