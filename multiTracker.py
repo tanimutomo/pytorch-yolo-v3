@@ -4,6 +4,7 @@ from __future__ import print_function
 import sys
 import cv2
 from random import randint
+import video_demo
 
 trackerTypes = ['BOOSTING', 'MIL', 'KCF','TLD', 'MEDIANFLOW', 'GOTURN', 'MOSSE', 'CSRT']
 
@@ -41,13 +42,13 @@ if __name__ == '__main__':
   for t in trackerTypes:
       print(t)      
 
-  trackerType = "CSRT"      
+  trackerType = "CSRT"
 
   # Set video to load
-  videoPath = "run.mp4"
+  videoPath = "videos/run.mp4"
   
   # Create a video capture object to read videos
-  cap = cv2.VideoCapture(videoPath)
+  cap = cv2.VideoCapture(0)
  
   # Read first frame
   success, frame = cap.read()
@@ -57,25 +58,28 @@ if __name__ == '__main__':
     sys.exit(1)
 
   ## Select boxes
-  bboxes = []
-  colors = [] 
+  bboxes = video_demo.demo()
+  colors = []
+  for i in bboxes:
+    colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
 
   # OpenCV's selectROI function doesn't work for selecting multiple objects in Python
   # So we will call this function in a loop till we are done selecting all objects
-  while True:
-    # draw bounding boxes over objects
-    # selectROI's default behaviour is to draw box starting from the center
-    # when fromCenter is set to false, you can draw box starting from top left corner
-    bbox = cv2.selectROI('MultiTracker', frame)
-    bboxes.append(bbox)
-    colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
-    print("Press q to quit selecting boxes and start tracking")
-    print("Press any other key to select next object")
-    k = cv2.waitKey(0) & 0xFF
-    if (k == 113):  # q is pressed
-      break
-  
-  print('Selected bounding boxes {}'.format(bboxes))
+#  while True:
+#    # draw bounding boxes over objects
+#    # selectROI's default behaviour is to draw box starting from the center
+#    # when fromCenter is set to false, you can draw box starting from top left corner
+#    bbox = cv2.selectROI('MultiTracker', frame)
+#    bboxes.append(bbox)
+#    colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
+#    print("Press q to quit selecting boxes and start tracking")
+#    print("Press any other key to select next object")
+#    k = cv2.waitKey(0) & 0xFF
+#    if (k == 113):  # q is pressed
+#      break
+#  
+#  print('Selected bounding boxes {}'.format(bboxes))
+
 
   ## Initialize MultiTracker
   # There are two ways you can initialize multitracker
@@ -93,6 +97,7 @@ if __name__ == '__main__':
 
   # Initialize MultiTracker 
   for bbox in bboxes:
+    print("tracking input box: ", bbox)
     multiTracker.add(createTrackerByName(trackerType), frame, bbox)
 
 
@@ -101,15 +106,17 @@ if __name__ == '__main__':
     success, frame = cap.read()
     if not success:
       break
-    
+
     # get updated location of objects in subsequent frames
     success, boxes = multiTracker.update(frame)
+    print("update boxes: ", boxes)
 
     # draw tracked objects
     for i, newbox in enumerate(boxes):
       p1 = (int(newbox[0]), int(newbox[1]))
       p2 = (int(newbox[0] + newbox[2]), int(newbox[1] + newbox[3]))
       cv2.rectangle(frame, p1, p2, colors[i], 2, 1)
+      print("rectangle point: ", p1, p2)
 
     # show frame
     cv2.imshow('MultiTracker', frame)
