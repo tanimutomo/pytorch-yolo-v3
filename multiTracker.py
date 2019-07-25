@@ -90,8 +90,8 @@ if __name__ == '__main__':
 
 
 
-    print("Default tracking algoritm is CSRT \n"
-          "Available tracking algorithms are:\n")
+    #print("Default tracking algoritm is CSRT \n"
+    #      "Available tracking algorithms are:\n")
 
     for t in trackerTypes:
         print(t)
@@ -108,8 +108,9 @@ if __name__ == '__main__':
     success, frame = cap.read()
     # quit if unable to read the video file
     if not success:
-        print('Failed to read video')
+        #print('Failed to read video')
         sys.exit(1)
+        
     ## Select boxes
     #bboxes = video_demo.demo()
     colors = []
@@ -145,6 +146,7 @@ if __name__ == '__main__':
         success, frame = cap.read()
         if not success:
           break
+        bboxes = []
 
 
         ##########################
@@ -173,8 +175,8 @@ if __name__ == '__main__':
                 output[i, [1,3]] = torch.clamp(output[i, [1,3]], 0.0, im_dim[i,0])
                 output[i, [2,4]] = torch.clamp(output[i, [2,4]], 0.0, im_dim[i,1])
 
-            print("output: ", output)
-            print("output: ", output.shape)
+            #print("output: ", output)
+            #print("output: ", output.shape)
 
             for i in output:
                 x0 = i[1].int()
@@ -187,7 +189,7 @@ if __name__ == '__main__':
                 w = x1 - x0
                 h = y1 - y0
                 bboxes.append((x0, y0, w, h))
-                print(bboxes)
+                #print(bboxes)
 
             # Create MultiTracker object
             multiTracker = cv2.MultiTracker_create()
@@ -195,27 +197,27 @@ if __name__ == '__main__':
             # Initialize MultiTracker 
             for bbox in bboxes:
                 colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
-                print("tracking input box: ", bbox)
+                #print("tracking input box: ", bbox)
                 multiTracker.add(createTrackerByName(trackerType), frame, bbox)
 
         ##########################
 
         # get updated location of objects in subsequent frames
         success, boxes = multiTracker.update(frame)
-        print("update boxes: ", boxes)
+        #print("update boxes: ", boxes)
 
         # draw tracked objects
         for i, newbox in enumerate(boxes):
             p1 = (int(newbox[0]), int(newbox[1]))
             p2 = (int(newbox[0] + newbox[2]), int(newbox[1] + newbox[3]))
             cv2.rectangle(frame, p1, p2, colors[i], 2, 1)
-            print("rectangle point: ", p1, p2)
+            #print("rectangle point: ", p1, p2)
 
         # show frame
         cv2.imshow('MultiTracker', frame)
 
         frames+=1
-        print("frames>>>>>", frames)
+        #print("frames>>>>>", frames)
 
         # quit on ESC button
         if cv2.waitKey(1) & 0xFF == 27:  # Esc pressed
