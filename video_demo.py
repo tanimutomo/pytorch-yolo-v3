@@ -164,7 +164,7 @@ def demo():
                 break
             frames += 1
             print("FPS of the video is {:5.2f}g7".format( frames / (time.time() - start)))
-            return xywh
+            #return xywh
 
         else:
             break
