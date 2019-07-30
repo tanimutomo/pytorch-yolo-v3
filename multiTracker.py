@@ -43,6 +43,12 @@ def createTrackerByName(trackerType):
             print(t)
 
     return tracker
+# Return true if line segments AB and CD intersect
+def intersect(A,B,C,D):
+        return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+
+def ccw(A,B,C):
+        return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
 
 
 
@@ -72,6 +78,10 @@ if __name__ == '__main__':
 
     bboxes = []
     xywh = []
+    (H, W) = (None, None) 
+    counter = 0
+    line = [(43, 543), (550, 655)]
+
 
     model = Darknet(params["cfgfile"])
     model.load_weights(params["weightsfile"])
@@ -170,6 +180,8 @@ if __name__ == '__main__':
             output[:,[2,4]] -= (inp_dim - scaling_factor*im_dim[:,1].view(-1,1))/2
 
             output[:,1:5] /= scaling_factor
+            if W is None or H is None:
+                (H, W) = frame.shape[:2]
 
             for i in range(output.shape[0]):
                 output[i, [1,3]] = torch.clamp(output[i, [1,3]], 0.0, im_dim[i,0])
@@ -177,18 +189,22 @@ if __name__ == '__main__':
 
             #print("output: ", output)
             #print("output: ", output.shape)
+            classes = load_classes('data/coco.names')
 
             for i in output:
                 x0 = i[1].int()
                 y0 = i[2].int()
                 x1 = i[3].int()
                 y1 = i[4].int()
+                cls = i[-1].int()
+                label = "{0}".format(classes[cls])
                 #bbox = (x0, y0, x1, y1)
                 #bboxes.append(bbox)
                 #print(bbox)
                 w = x1 - x0
                 h = y1 - y0
-                bboxes.append((x0, y0, w, h))
+                if label == "person":
+                    bboxes.append((x0, y0, w, h))
                 #print(bboxes)
 
             # Create MultiTracker object
@@ -212,8 +228,13 @@ if __name__ == '__main__':
             p2 = (int(newbox[0] + newbox[2]), int(newbox[1] + newbox[3]))
             cv2.rectangle(frame, p1, p2, colors[i], 2, 1)
             #print("rectangle point: ", p1, p2)
+            cv2.line(frame, (0, H // 2), (W, H // 2), (0, 255, 255), 2)
+            if intersect(p1, p2, line[0], line[1]):
+                counter += 1
 
-        # show frame
+        # draw counter
+        cv2.putText(frame, str(counter), (100,200), cv2.FONT_HERSHEY_DUPLEX, 5.0, (0, 255, 255), 10)
+        #counter += 1
         cv2.imshow('MultiTracker', frame)
 
         frames+=1
