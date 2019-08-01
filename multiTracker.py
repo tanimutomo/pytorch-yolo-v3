@@ -149,6 +149,7 @@ if __name__ == '__main__':
 
 
     frames = 0
+    previous_boxes = []
 
 
     # Process video and track objects
@@ -220,18 +221,31 @@ if __name__ == '__main__':
 
         # get updated location of objects in subsequent frames
         success, boxes = multiTracker.update(frame)
-        #print("update boxes: ", boxes)
+        print("-------------")
+        print("update boxes: ", boxes)
 
         # draw tracked objects
         for i, newbox in enumerate(boxes):
+            print("  i: ", i)
+            print("  newbox: ", newbox)
             p1 = (int(newbox[0]), int(newbox[1]))
             p2 = (int(newbox[0] + newbox[2]), int(newbox[1] + newbox[3]))
+            previous_p1 = ()
+            previous_p2 = ()
+
+
             cv2.rectangle(frame, p1, p2, colors[i], 2, 1)
             #print("rectangle point: ", p1, p2)
             cv2.line(frame, (0, H // 2), (W, H // 2), (0, 255, 255), 2)
-            if intersect(p1, p2, line[0], line[1]):
-                counter += 1
+            
+            if previous_boxes != ():
+                if len(previous_boxes) > i:
+                    n_center = (int(newbox[0] + newbox[2] / 2), int(newbox[1] + newbox[3] / 2))
+                    p_center = (int(previous_boxes[i][0] + previous_boxes[i][2] / 2), int(previous_boxes[i][1] + previous_boxes[i][3] / 2))
+                    if intersect(p_center, n_center, (0, H // 2), (W, H // 2)):
+                        counter += 1
 
+        previous_boxes = boxes
         # draw counter
         cv2.putText(frame, str(counter), (100,200), cv2.FONT_HERSHEY_DUPLEX, 5.0, (0, 255, 255), 10)
         #counter += 1
