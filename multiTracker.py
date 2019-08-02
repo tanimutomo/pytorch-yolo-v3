@@ -67,7 +67,8 @@ if __name__ == '__main__':
         "nms_thresh": 0.4, # NMS Threshold
         "cfgfile": "cfg/yolov3.cfg", # Config file
         "weightsfile": "yolov3.weights", # Weightsfile
-        "repo": 416 # Input resolution of the network.  Increase to increase accuracy.  Decrease to increase speed
+        "repo": 416, # Input resolution of the network.  Increase to increase accuracy.  Decrease to increase speed
+        "iou_thresh": 0.1
     }
 
     confidence = float(params["confidence"])
@@ -109,10 +110,10 @@ if __name__ == '__main__':
     trackerType = "CSRT"
 
     # Set video to load
-    videoPath = "videos/run.mp4"
+    video_path = "videos/small_ex01.avi"
 
     # Create a video capture object to read videos
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(video_path)
 
     # Read first frame
     success, frame = cap.read()
@@ -157,14 +158,13 @@ if __name__ == '__main__':
         success, frame = cap.read()
         if not success:
           break
-        bboxes = []
-
+        det_boxes = []
 
         ##########################
         # detection
 
-
-        if frames%2==1:
+        # detection phase
+        if frames == 0:
             img, orig_im, dim = video_demo.prep_image(frame, inp_dim)
             im_dim = torch.FloatTensor(dim).repeat(1,2)
             im_dim = im_dim.to(device)
@@ -193,65 +193,86 @@ if __name__ == '__main__':
             classes = load_classes('data/coco.names')
 
             for i in output:
-                x0 = i[1].int()
-                y0 = i[2].int()
-                x1 = i[3].int()
-                y1 = i[4].int()
-                cls = i[-1].int()
+                x0 = int(i[1].item())
+                y0 = int(i[2].item())
+                x1 = int(i[3].item())
+                y1 = int(i[4].item())
+                cls = int(i[-1].item())
                 label = "{0}".format(classes[cls])
                 #bbox = (x0, y0, x1, y1)
-                #bboxes.append(bbox)
-                #print(bbox)
+                #det_boxes.append(bbox)
+                # print(box.shape)
                 w = x1 - x0
                 h = y1 - y0
-                if label == "person":
-                    bboxes.append((x0, y0, w, h))
-                #print(bboxes)
+                if label in ["person", "car"]:
+                # if label == "person":
+                    det_boxes.append((x0, y0, w, h))
+                #print(det_boxes)
 
             # Create MultiTracker object
             multiTracker = cv2.MultiTracker_create()
 
             # Initialize MultiTracker 
-            for bbox in bboxes:
-                colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
+            for bbox in det_boxes:
+                # colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
                 #print("tracking input box: ", bbox)
                 multiTracker.add(createTrackerByName(trackerType), frame, bbox)
 
         ##########################
 
+        # tracking phase
         # get updated location of objects in subsequent frames
-        success, boxes = multiTracker.update(frame)
+        success, trc_boxes = multiTracker.update(frame)
+        trc_boxes = [[int(i) for i in box] for box in trc_boxes]
         print("-------------")
-        print("update boxes: ", boxes)
+        # print("tracked boxes: ", trc_boxes)
+
+        # Compare the detection boxes and tracking boxes
+        if frames == 0:
+            det_boxes = [list(box) for box in det_boxes]
+            # print("detected boxes: ", det_boxes)
+            boxes = compare_boxes(det_boxes, trc_boxes, params['iou_thresh'])
+            # print("boxes:", boxes)
+            if frames % 15 == 0 or (frames+1) % 15 == 0:
+                print("detected boxes: ", det_boxes)
+                print("boxes:", boxes)
 
         # draw tracked objects
         for i, newbox in enumerate(boxes):
-            print("  i: ", i)
-            print("  newbox: ", newbox)
+            # print("  i: ", i)
+            # print("  newbox: ", newbox)
             p1 = (int(newbox[0]), int(newbox[1]))
             p2 = (int(newbox[0] + newbox[2]), int(newbox[1] + newbox[3]))
             previous_p1 = ()
             previous_p2 = ()
 
 
-            cv2.rectangle(frame, p1, p2, colors[i], 2, 1)
+            # color = (randint(64, 255), randint(64, 255), randint(64, 255))
+            color = (255, 0, 0)
+            cv2.rectangle(frame, p1, p2, color, 2, 1)
             #print("rectangle point: ", p1, p2)
             cv2.line(frame, (0, H // 2), (W, H // 2), (0, 255, 255), 2)
             
             if previous_boxes != ():
                 if len(previous_boxes) > i:
-                    n_center = (int(newbox[0] + newbox[2] / 2), int(newbox[1] + newbox[3] / 2))
-                    p_center = (int(previous_boxes[i][0] + previous_boxes[i][2] / 2), int(previous_boxes[i][1] + previous_boxes[i][3] / 2))
+                    n_center = (int(newbox[0] + newbox[2] / 2),
+                                int(newbox[1] + newbox[3] / 2))
+                    p_center = (int(previous_boxes[i][0] + previous_boxes[i][2] / 2),
+                                int(previous_boxes[i][1] + previous_boxes[i][3] / 2))
                     if intersect(p_center, n_center, (0, H // 2), (W, H // 2)):
                         counter += 1
 
+        # if frames % 15 == 0 and frames != 0:
+        #     # print(len(det_boxes), len(boxes))
+        #     counter -= int(len(boxes) / 2)
+        print(frames, counter)
         previous_boxes = boxes
         # draw counter
         cv2.putText(frame, str(counter), (100,200), cv2.FONT_HERSHEY_DUPLEX, 5.0, (0, 255, 255), 10)
         #counter += 1
         cv2.imshow('MultiTracker', frame)
 
-        frames+=1
+        frames += 1
         #print("frames>>>>>", frames)
 
         # quit on ESC button
