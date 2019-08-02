@@ -10,6 +10,45 @@ import cv2
 import matplotlib.pyplot as plt
 from bbox import bbox_iou
 
+def compare_boxes(det_boxes, trc_boxes, iou_thresh):
+    boxes = trc_boxes
+    for dbox in det_boxes:
+        ious = list()
+        for tbox in trc_boxes:
+            ious.append(calc_iou(dbox, tbox))
+        if max(ious) < iou_thresh:
+            boxes.append(dbox)
+    return boxes
+
+
+def calc_iou(box1, box2):
+    if box1[0] <= box2[0]:
+        lbox = box1
+        rbox = box2
+    elif box1[0] > box2[0]:
+        lbox = box2
+        rbox = box1
+
+    lx, ly, lw, lh = lbox
+    rx, ry, rw, rh = rbox
+
+    # up-left and right-bottom
+    if ly <= ry:
+        if lx + lw < rx or ly + lh < ry:
+            return 0.0
+        intersection = (lx + lw - rx) * (ly + lh - ry)
+        union = lh * lw + rh * rw - intersection
+        return intersection / union
+
+    # up-right and left-bottom
+    else:
+        if rx > lx + lw or ly > ry + rh:
+            return 0.0
+        intersection = (lx + lw - rx) * (ry + rh - ly)
+        union = lh * lw + rh * rw - intersection
+        return intersection / union
+
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters())
 
